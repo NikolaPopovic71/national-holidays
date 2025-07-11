@@ -1,9 +1,10 @@
-// src/components/HolidayList.jsx (Final Version)
-import React from 'react';
+// src/components/HolidayList.jsx
+import React, { useMemo } from 'react'; // 1. Import useMemo
 import { useQuery } from '@tanstack/react-query';
 import { getPublicHolidays } from '../api';
 
 const formatDate = (dateString) => {
+  // ... (no changes to this function)
   if (!dateString) {
     return 'Date not provided';
   }
@@ -21,21 +22,37 @@ const formatDate = (dateString) => {
 };
 
 function HolidayList({ countryCode, countryName }) {
-  // Get `isFetching` in addition to the other states.
   const {
     data: holidays,
     isError,
     error,
-    isFetching, // Use this for a non-blocking loading indicator
+    isFetching,
   } = useQuery({
     queryKey: ['holidays', countryCode],
     queryFn: () => getPublicHolidays(countryCode),
-    // This option keeps the previous data visible while new data is fetched.
-    // It's the default, but good to be aware of.
     keepPreviousData: true,
   });
 
-  // We only need a hard error state. The loading is handled below.
+  // 2. Create a memoized, unique list of holidays.
+  const uniqueHolidays = useMemo(() => {
+    // If there's no data, return an empty array.
+    if (!Array.isArray(holidays)) {
+      return [];
+    }
+
+    // Filter the array, keeping only the first occurrence of each holiday
+    // based on a unique combination of its date and name.
+    return holidays.filter(
+      (holiday, index, self) =>
+        index ===
+        self.findIndex(
+          (h) =>
+            h.startDate === holiday.startDate &&
+            h.name[0]?.text === holiday.name[0]?.text
+        )
+    );
+  }, [holidays]); // This logic only re-runs when the 'holidays' data changes.
+
   if (isError) {
     return <p className="alert alert-danger">Error: {error.message}</p>;
   }
@@ -44,25 +61,22 @@ function HolidayList({ countryCode, countryName }) {
     <div className="margin-top">
       <h2 className="text-center">
         Public Holidays for {countryName} in {new Date().getFullYear()}
-        {/* Show a subtle indicator when fetching */}
         {isFetching && ' (loading...)'}
       </h2>
 
-      {/* When fetching, we can dim the old list to show something is happening */}
       <ul
         className="holiday-list"
         style={{ opacity: isFetching ? 0.5 : 1, transition: 'opacity 0.2s' }}
       >
-        {holidays && holidays.length > 0 ? (
-          holidays.map((holiday) => (
+        {/* 3. Use the new 'uniqueHolidays' array for rendering. */}
+        {uniqueHolidays && uniqueHolidays.length > 0 ? (
+          uniqueHolidays.map((holiday) => (
             <li key={holiday.id}>
-              {/* This version will produce exactly one dash */}
-               {formatDate(holiday.startDate)} –{' '}
+              - {formatDate(holiday.startDate)} –{' '}
               {holiday.name[0]?.text || 'Name not provided'}
             </li>
           ))
         ) : (
-          /* Show a message if there are no holidays, but not while loading the first time */
           !isFetching && (
             <p className="alert alert-warning">
               No public holidays found for this selection.

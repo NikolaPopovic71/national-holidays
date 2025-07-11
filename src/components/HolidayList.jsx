@@ -72,7 +72,7 @@ function HolidayList({ countryCode, countryName }) {
         {uniqueHolidays && uniqueHolidays.length > 0 ? (
           uniqueHolidays.map((holiday) => (
             <li key={holiday.id}>
-              - {formatDate(holiday.startDate)} –{' '}
+              {formatDate(holiday.startDate)} –{' '}
               {holiday.name[0]?.text || 'Name not provided'}
             </li>
           ))
